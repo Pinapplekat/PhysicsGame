@@ -1,1 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+  <meta charset="UTF-8" />
+  <title>MineBlox</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      background: #eee;
+    }
+
+    #topbar {
+      position: fixed;
+      display: flex;
+      user-select: none;
+    }
+    button{
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="topbar">
+    <form id="newObject">
+      (x: <input type="number" name="xpos" id="xpos" style="width: 50px;" value="100" placeholder="Position: X">, y:
+      <input type="number" name="ypos" id="ypos" style="width: 50px;" value="100" placeholder="Position: Y">)
+      <label for="type">Type:</label>
+      <select id="type" name="type">
+
+      </select>
+      <input type="submit" value="Create Object">
+    </form>
+    &emsp;Press 'R' to <button type="button" onclick="resetData()">Reset world</button>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+  <script src="game.js" defer></script>
+</body>
+
+</html>
