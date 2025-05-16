@@ -23,7 +23,10 @@ try {
         // 'wood_log': { type: 'wood_log', color: '#5c2d22', rigid: true, collidable: false, image: './images/wood.png' },
         'coin': { type: 'coin', color: '#f7c340', rigid: false, image: './images/coin.png' },
         'gem': { type: 'gem', color: '#4df0ff', rigid: true, image: './images/gem.png' },
-        'leaf': { type: 'leaf', color: '#548a2d', rigid: true, image: './images/leaf.png' }
+        'leaf': { type: 'leaf', color: '#548a2d', rigid: true, image: './images/leaf.png' },
+        'snow': { type: 'snow', color: '#ffffff', rigid: true },
+        'ice': { type: 'ice', color: 'lightblue', rigid: true },
+        'sandstone': { type: 'sandstone', color: 'lightbrown', rigid: true },
     }
 
     const keys = {
@@ -138,7 +141,7 @@ try {
 
             // --- Y AXIS COLLISION ---
             for (let obj of objects) {
-                if (obj.destroyed) continue;
+                if (obj.destroyed || !obj.collisions) continue;
 
                 const isFalling = this.velocityY >= 0;
                 const isAbove = this.y + this.height <= obj.y;
@@ -148,7 +151,7 @@ try {
                 const willLand =
                     nextY + this.height >= obj.y && this.y + this.height <= obj.y;
 
-                if (isFalling && isAbove && horizontalOverlap && willLand && obj.collisions) {
+                if (isFalling && isAbove && horizontalOverlap && willLand) {
                     this.y = obj.y - this.height;
                     this.velocityY = 0;
                     this.jumpCount = 0;
@@ -229,10 +232,10 @@ try {
             ctx.save(); // Save the context for the right leg
 
             // Right leg - rotate around the other hip
-            ctx.translate(this.x + this.width - 17.5, this.y + 70); // Move to the other hip
+            ctx.translate(this.x + this.width - this.width / 3, this.y + this.height - this.height / 3); // Move to the other hip
             ctx.rotate(Math.sin(this.legRotation + Math.PI) * 0.5); // Rotate in opposite direction for walking effect
             ctx.fillStyle = "yellow";
-            ctx.fillRect(-5, 0, 15, 30); // Draw right leg
+            ctx.fillRect(-5, 0, this.height / 6, this.height / 3); // Draw right leg
             ctx.restore(); // Restore the context
         }
 
@@ -240,10 +243,10 @@ try {
             ctx.save(); // Save the current drawing context
 
             // Left leg - rotate around the hip
-            ctx.translate(this.x + 12.5, this.y + 70); // Move to the hip position (adjusted)
+            ctx.translate(this.x + this.width / 3, this.y + this.height - this.height / 3); // Move to the hip position (adjusted)
             ctx.rotate(Math.sin(this.legRotation) * 0.5); // Rotate back and forth for walking effect
             ctx.fillStyle = "yellow";
-            ctx.fillRect(-5, 0, 15, 30); // Draw left leg
+            ctx.fillRect(-5, 0, this.height / 6, this.height / 3); // Draw left leg
             ctx.restore(); // Restore the drawing context
         }
 
@@ -251,10 +254,10 @@ try {
             ctx.save()
 
             // Right arm
-            ctx.translate(this.x + this.width, this.y + 30); // Move to the hip position (adjusted)
+            ctx.translate(this.x + this.width, this.y + this.height / 3); // Move to the hip position (adjusted)
             ctx.rotate(Math.sin(this.legRotation) * 0.5);
             ctx.fillStyle = "yellow";
-            ctx.fillRect(-5, 0, 15, 40);
+            ctx.fillRect(-5, 0, this.height / 6, this.height / 3);
             ctx.restore()
         }
 
@@ -263,21 +266,21 @@ try {
             ctx.save()
 
             // Left arm
-            ctx.translate(this.x - 5, this.y + 30); // Move to the hip position (adjusted)
+            ctx.translate(this.x, this.y + this.height / 3); // Move to the hip position (adjusted)
             ctx.rotate(Math.sin(this.legRotation + Math.PI) * 0.5);
             ctx.fillStyle = "yellow";
-            ctx.fillRect(-5, 0, 15, 40);
+            ctx.fillRect(-5, 0, this.height / 6, this.height / 3);
             ctx.restore()
         }
 
         // Draw torso (body) at a fixed position
         drawTorso() {
             ctx.fillStyle = "blue";
-            ctx.fillRect(this.x + 5, this.y + 30, this.width - 10, this.height - 60); // Draw the torso at the correct position
+            ctx.fillRect(this.x + this.height / 9, this.y + this.height / 3, this.width - this.height / 6, this.height - this.height / 1.5); // Draw the torso at the correct position
         }
         drawHead() {
             ctx.fillStyle = "yellow";
-            ctx.fillRect(this.x + 10, this.y, 30, 30); // Draw the head at the correct position
+            ctx.fillRect(this.x + this.height / 9, this.y + (this.height * 0.05), this.width - this.height / 6, this.width - this.height / 6); // Draw the head at the correct position
         }
     }
 
@@ -303,7 +306,7 @@ try {
             this.collected = false;
             this.collisions = true
 
-            if(no_collisions.includes(this.type)) this.collisions = false
+            if (no_collisions.includes(this.type)) this.collisions = false
 
             this.velocityX = 0;
             this.velocityY = 0;
@@ -656,7 +659,7 @@ try {
             if (!grounded) {
                 this.y += this.velocityY;
 
-                if (this.y > canvas.height+10) {
+                if (this.y > canvas.height + 10) {
                     this.y = -this.height
                     this.x = 100
                     // this.velocityY = 0;
@@ -778,6 +781,12 @@ try {
     }
 
 
+    // Helper function to return a random biome type
+    function getRandomBiome() {
+        const biomes = ['grassland', 'desert', 'mountain', 'forest', 'snow'];
+        return biomes[Math.floor(Math.random() * biomes.length)];
+    }
+
     function generateHillyTerrain(options = {}) {
         const {
             segmentWidth = TILE_SIZE,
@@ -785,8 +794,6 @@ try {
             minHeight = canvas.height / 2,
             roughness = 1.5,
             smoothness = 0.3,
-            surfaceType = 'grass',
-            undergroundType = 'dirt',
             baseType = 'stone'
         } = options;
 
@@ -807,11 +814,43 @@ try {
         }
 
         const surfaceTiles = [];
+        let currentBiome = getRandomBiome(); // Random biome for this section
 
         for (let i = 0; i < numSegments; i++) {
             const x = i * segmentWidth;
             const topY = terrainHeights[i];
 
+            // Choose surface and underground types based on biome
+            let surfaceType = 'grass'; // Default is grass
+            let undergroundType = 'dirt'; // Default is dirt
+            let baseType = 'stone'; // Default base type
+
+            switch (currentBiome) {
+                case 'desert':
+                    surfaceType = 'sand';
+                    undergroundType = 'sandstone';
+                    break;
+                case 'forest':
+                    surfaceType = 'grass';
+                    undergroundType = 'dirt';
+                    break;
+                case 'mountain':
+                    surfaceType = 'grass';
+                    undergroundType = 'stone';
+                    break;
+                case 'snow':
+                    surfaceType = 'snow';
+                    undergroundType = 'ice';
+                    break;
+                // Add more biomes as needed
+            }
+
+            // Update biome if transitioning
+            if (Math.random() < 0.1) { // Random chance to transition to a new biome
+                currentBiome = getRandomBiome();
+            }
+
+            // Create blocks based on terrain type
             for (let y = topY; y < canvas.height; y += TILE_SIZE) {
                 let type = undergroundType;
 
@@ -843,8 +882,8 @@ try {
             }
         }
 
-        generateTrees(surfaceTiles, { treeChance: 0.15 });
-
+        // Generate trees only on specific biomes
+        generateTrees(surfaceTiles, { treeChance: currentBiome === 'forest' ? 0.15 : 0.05 });
     }
 
 
@@ -885,7 +924,7 @@ try {
 
 
     // Create player
-    const player = new PhysicsObject(100, 100, 50, 100, "transparent");
+    const player = new PhysicsObject(100, 100, TILE_SIZE * 1.25, TILE_SIZE * 2.75, "transparent");
 
     // Keyboard listeners
     document.addEventListener("contextmenu", (e) => {
@@ -1003,12 +1042,129 @@ try {
         localStorage.setItem('inventory', JSON.stringify(player.inventory))
     }
 
+    function copyData() {
+        let objData = []
+        let animData = []
+        for (obj of objects) {
+            if (obj.destroyed) continue
+            var data = obj.returnData()
+            objData.push(data)
+        }
+        for (anim of animals) {
+            if (anim.killed) continue
+            var data = anim.returnData()
+            animData.push(data)
+        }
+        var data = {
+            blocks: objData,
+            animals: animData,
+            player: {
+                pos: {
+                    x: player.x,
+                    y: player.y
+                },
+                inventory: player.inventory
+            }
+        }
+        saveTextAsFile(JSON.stringify(data), 'world-' + Date.now() + '.world')
+    }
+
+    async function copyToClipboard(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            console.log('Text copied to clipboard');
+            alert('Copied world data')
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    }
+
+    function saveTextAsFile(text, filename) {
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
     function resetData() {
         resetted = true
         localStorage.clear()
         window.location.reload()
     }
 
+    function resetFileInput(input) {
+        try {
+            input.value = null;
+        } catch (ex) { }
+        if (input.value) {
+            input.parentNode.replaceChild(input.cloneNode(true), input);
+        }
+    }
+
+    var worldFile = document.getElementById('worldFile')
+    worldFile.addEventListener('input', (event) => {
+        const file = event.target.files[0];
+
+        if (!file) return
+
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            const text = e.target.result;
+            loadWorldData(JSON.parse(text), file.name)
+            resetFileInput(worldFile)
+        };
+
+        reader.readAsText(file);
+    })
+
+    function loadWorldData(data, filename) {
+        // var data = prompt('Paste world data here:')
+        if (!data) return
+
+        filename = filename || 'unknown name'
+        var confirmation = confirm('Load selected world: '+filename)
+        if (!confirmation) return
+        var objData
+        var animData
+        var playerData
+        var playerInventory
+        // data = JSON.parse(data)
+        var savedobjects = data.blocks
+        if (savedobjects) objData = savedobjects
+        else return
+        var savedAnims = data.animals
+        if (savedAnims) animData = savedAnims
+        var playerPos = data.player.pos
+        if (playerPos) playerData = playerPos
+        else playerData = { x: 100, y: 100 }
+        var playerInv = data.player.inventory
+        if (playerInv) playerInventory = playerInv
+        else playerInventory = {}
+
+        player.x = playerData.x
+        player.y = playerData.y
+        player.inventory = playerInventory
+
+        objects = []
+        animals = []
+        for (let obj of objData) {
+            var { type, color, x, y, width, height, destroyed } = obj
+            var newObj = new InteractableObject(x, y, width, height, color, type, destroyed)
+            objects.push(newObj)
+        }
+        for (let anim of animData) {
+            var { x, y } = anim
+            var newAnim = new Sheep(x, y)
+            animals.push(newAnim)
+        }
+
+    }
 
     function loadData() {
         var objData
